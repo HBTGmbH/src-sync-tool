@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+
+group 'de.hbt.tools'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile group: 'commons-io', name: 'commons-io', version: '2.6'
+    compile group: 'org.apache.tika', name: 'tika-parsers', version: '1.24'
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
