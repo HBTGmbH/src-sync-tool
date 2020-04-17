@@ -16,3 +16,10 @@ dependencies {
     compile group: 'org.apache.tika', name: 'tika-parsers', version: '1.24'
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
+
+task shell(dependsOn: 'testClasses', type: JavaExec) {
+    standardInput = System.in
+    main = 'de.hbt.tools.sourcesync.SourceSyncTool'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = []
+}
