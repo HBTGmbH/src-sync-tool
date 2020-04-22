@@ -10,9 +10,9 @@ Note: Sources in dest-dir have to exist.
 For interactive mode, run:
 
 ```
-java -jar src-sync-tool-1.0-all.jar
+java -jar src-sync-tool.jar
 ```
 For non-interactive mode, use
 ```
-java -jar src-sync-tool-1.0-all.jar <srcdir> <destdir>
+java -jar src-sync-tool.jar <srcdir> <destdir>
 ```
