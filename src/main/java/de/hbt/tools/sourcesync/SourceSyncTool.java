@@ -4,8 +4,10 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tika.parser.txt.CharsetDetector;
 import org.apache.tika.parser.txt.CharsetMatch;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -18,16 +20,29 @@ public class SourceSyncTool {
     }
 
     public static void main(String[] args) {
-
-        if(args.length != 2) {
-            System.out.println("Usage: SourceSyncTool <Source Dir> <Dest Dir>");
-            System.out.println("Overwrite all files in <Dest Dir> and subdirectories with corresponding files from source dir.");
-            System.out.println("Result is always written as UTF-8 and LF and source encoding is detected by Apache Tika.");
+        try {
+            runSync(args);
+        } catch (Exception e) {
+            System.out.println("Failed to sync: " + e.getMessage());
+            e.printStackTrace();
             System.exit(1);
         }
+    }
 
-        String sourceDir = args[0];
-        String destDir = args[1];
+    private static void runSync(String[] args) throws Exception {
+        String sourceDir;
+        String destDir;
+        if(args.length != 2) {
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            System.out.println("Please specify source dir ");
+            sourceDir = br.readLine();
+            System.out.println("Please specify dest dir");
+            destDir = br.readLine();
+        } else {
+            sourceDir = args[0];
+            destDir = args[1];
+        }
+
 
         if(!new File(sourceDir).isDirectory()) {
             throw new IllegalArgumentException("Source dir " + sourceDir + " is not a directory!");
@@ -35,9 +50,9 @@ public class SourceSyncTool {
         if(!new File(destDir).isDirectory()) {
             throw new IllegalArgumentException("Dest dir " + destDir + " is not a directory!");
         }
-
+        System.out.println("Syncing sources from " + sourceDir + " to " + destDir);
         Collection<File> allDestFiles = FileUtils.listFiles(new File(destDir), null, true);
-
+        System.out.println("Found " + allDestFiles.size() + " files");
         allDestFiles.stream().filter(f -> !IGNORE_FILES.contains(f.getName())).forEach(destFile -> {
             String sourceFilePath =  sourceDir + destFile.getAbsolutePath().substring(destDir.length());
             File sourceFile = new File(sourceFilePath);
@@ -70,7 +85,5 @@ public class SourceSyncTool {
                 }
             }
         });
-
     }
-
 }

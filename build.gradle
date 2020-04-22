@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id "com.github.johnrengelman.shadow" version "5.2.0"
 }
 
 group 'de.hbt.tools'
@@ -11,8 +12,23 @@ repositories {
     mavenCentral()
 }
 
+jar {
+    manifest {
+        attributes(
+                'Main-Class': "de.hbt.tools.sourcesync.SourceSyncTool"
+        )
+    }
+}
+
 dependencies {
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     compile group: 'org.apache.tika', name: 'tika-parsers', version: '1.24'
     testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+task shell(dependsOn: 'testClasses', type: JavaExec) {
+    standardInput = System.in
+    main = 'de.hbt.tools.sourcesync.SourceSyncTool'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = []
 }
