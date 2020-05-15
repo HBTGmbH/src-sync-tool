@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -70,24 +71,23 @@ public class SourceSyncTool {
                     detector.setText(FileUtils.readFileToByteArray(sourceFile));
                     CharsetMatch[] matches = detector.detectAll();
                     if (matches.length > 0) {
-                        // always use best match of charset
-                        String sourceCharset = matches[0].getName();
-                        File tempFile = File.createTempFile(sourceFile.getName(), ".tmp");
-                        String sourceContentWithLf = FileUtils.readFileToString(sourceFile, sourceCharset)
-                                .replaceAll("\\r\\n", "\n")
-                                .replaceAll("\\r", "\n");
-                        FileUtils.write(tempFile, sourceContentWithLf, "UTF-8");
-                        if (FileUtils.checksumCRC32(tempFile) != FileUtils.checksumCRC32(destFile)) {
-                            FileUtils.copyFile(tempFile, destFile);
-                            System.out.println("Updated " + destFile.getAbsolutePath());
+                        for (CharsetMatch match : matches) {
+                            try {
+                                syncOne(destFile, sourceFile, match.getName());
+                                break;
+                            } catch (UnsupportedCharsetException e) {
+                                System.err.println(match.getName() + " failed for " + sourceFilePath + ": " + e.getMessage());
+                            }
                         }
-                        tempFile.delete();
                     } else {
                         System.err.println("Could not detect encoding of source file " + sourceFilePath);
                     }
                 } catch (IOException e) {
                     System.err.println("Could not check or copy source file " + sourceFilePath);
                     e.printStackTrace();
+                } catch (Exception e) {
+                    System.err.println("Failed to sync " + sourceFilePath);
+                    throw e;
                 }
             }
         });
@@ -96,5 +96,18 @@ public class SourceSyncTool {
             System.out.println("Src-Sync done. Now checking for new potentially new and relevant files.");
             new PotentialNewFileCheck(sourceDir, destDir).checkForPotentiallyNewFiles(30);
         }
+    }
+
+    private static void syncOne(File destFile, File sourceFile, String sourceCharset) throws IOException {
+        File tempFile = File.createTempFile(sourceFile.getName(), ".tmp");
+        String sourceContentWithLf = FileUtils.readFileToString(sourceFile, sourceCharset)
+                .replaceAll("\\r\\n", "\n")
+                .replaceAll("\\r", "\n");
+        FileUtils.write(tempFile, sourceContentWithLf, "UTF-8");
+        if (FileUtils.checksumCRC32(tempFile) != FileUtils.checksumCRC32(destFile)) {
+            FileUtils.copyFile(tempFile, destFile);
+            System.out.println("Updated " + destFile.getAbsolutePath());
+        }
+        tempFile.delete();
     }
 }
