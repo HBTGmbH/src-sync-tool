@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.UnsupportedCharsetException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,6 +17,7 @@ import java.util.Set;
 public class SourceSyncTool {
 
     private static final Set<String> IGNORE_FILES = new HashSet<>();
+    private static final Collection<String> IGNORED_FILE_TYPES = Arrays.asList(".jpg", ".png", ".gif", ".jpeg", ".pdf");
 
     static {
         IGNORE_FILES.add(".DS_Store");
@@ -60,42 +62,49 @@ public class SourceSyncTool {
         System.out.println("Syncing sources from " + sourceDir + " to " + destDir);
         Collection<File> allDestFiles = FileUtils.listFiles(new File(destDir), null, true);
         System.out.println("Found " + allDestFiles.size() + " files");
-        allDestFiles.stream().filter(f -> !IGNORE_FILES.contains(f.getName())).forEach(destFile -> {
-            String sourceFilePath = sourceDir + destFile.getAbsolutePath().substring(destDir.length());
-            File sourceFile = new File(sourceFilePath);
-            if (!sourceFile.exists()) {
-                System.err.println(sourceFilePath + " no longer exists. Cannot update dest file! Check the reason manually.");
-            } else {
-                try {
-                    CharsetDetector detector = new CharsetDetector();
-                    detector.setText(FileUtils.readFileToByteArray(sourceFile));
-                    CharsetMatch[] matches = detector.detectAll();
-                    if (matches.length > 0) {
-                        for (CharsetMatch match : matches) {
-                            try {
-                                syncOne(destFile, sourceFile, match.getName());
-                                break;
-                            } catch (UnsupportedCharsetException e) {
-                                System.err.println(match.getName() + " failed for " + sourceFilePath + ": " + e.getMessage());
-                            }
-                        }
+        allDestFiles.stream()
+                .filter(f -> !isIngoredByType(f))
+                .filter(f -> !IGNORE_FILES.contains(f.getName()))
+                .forEach(destFile -> {
+                    String sourceFilePath = sourceDir + destFile.getAbsolutePath().substring(destDir.length());
+                    File sourceFile = new File(sourceFilePath);
+                    if (!sourceFile.exists()) {
+                        System.err.println(sourceFilePath + " no longer exists. Cannot update dest file! Check the reason manually.");
                     } else {
-                        System.err.println("Could not detect encoding of source file " + sourceFilePath);
+                        try {
+                            CharsetDetector detector = new CharsetDetector();
+                            detector.setText(FileUtils.readFileToByteArray(sourceFile));
+                            CharsetMatch[] matches = detector.detectAll();
+                            if (matches.length > 0) {
+                                for (CharsetMatch match : matches) {
+                                    try {
+                                        syncOne(destFile, sourceFile, match.getName());
+                                        break;
+                                    } catch (UnsupportedCharsetException e) {
+                                        System.err.println(match.getName() + " failed for " + sourceFilePath + ": " + e.getMessage());
+                                    }
+                                }
+                            } else {
+                                System.err.println("Could not detect encoding of source file " + sourceFilePath);
+                            }
+                        } catch (IOException e) {
+                            System.err.println("Could not check or copy source file " + sourceFilePath);
+                            e.printStackTrace();
+                        } catch (Exception e) {
+                            System.err.println("Failed to sync " + sourceFilePath);
+                            throw e;
+                        }
                     }
-                } catch (IOException e) {
-                    System.err.println("Could not check or copy source file " + sourceFilePath);
-                    e.printStackTrace();
-                } catch (Exception e) {
-                    System.err.println("Failed to sync " + sourceFilePath);
-                    throw e;
-                }
-            }
-        });
+                });
         if (doNewFileCheck) {
             System.out.println();
             System.out.println("Src-Sync done. Now checking for new potentially new and relevant files.");
             new PotentialNewFileCheck(sourceDir, destDir).checkForPotentiallyNewFiles(30);
         }
+    }
+
+    private static boolean isIngoredByType(File file) {
+        return IGNORED_FILE_TYPES.stream().anyMatch(s -> file.getName().endsWith(s));
     }
 
     private static void syncOne(File destFile, File sourceFile, String sourceCharset) throws IOException {
