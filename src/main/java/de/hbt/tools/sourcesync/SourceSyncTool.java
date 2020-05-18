@@ -17,7 +17,7 @@ import java.util.Set;
 public class SourceSyncTool {
 
     private static final Set<String> IGNORE_FILES = new HashSet<>();
-    private static final Collection<String> IGNORED_FILE_TYPES = Arrays.asList(".jpg", ".png", ".gif", ".jpeg", ".pdf");
+    private static final Collection<String> BINARY_FILE_TYPES = Arrays.asList(".jpg", ".png", ".gif", ".jpeg", ".pdf", ".svg");
 
     static {
         IGNORE_FILES.add(".DS_Store");
@@ -63,7 +63,6 @@ public class SourceSyncTool {
         Collection<File> allDestFiles = FileUtils.listFiles(new File(destDir), null, true);
         System.out.println("Found " + allDestFiles.size() + " files");
         allDestFiles.stream()
-                .filter(f -> !isIngoredByType(f))
                 .filter(f -> !IGNORE_FILES.contains(f.getName()))
                 .forEach(destFile -> {
                     String sourceFilePath = sourceDir + destFile.getAbsolutePath().substring(destDir.length());
@@ -71,29 +70,12 @@ public class SourceSyncTool {
                     if (!sourceFile.exists()) {
                         System.err.println(sourceFilePath + " no longer exists. Cannot update dest file! Check the reason manually.");
                     } else {
-                        try {
-                            CharsetDetector detector = new CharsetDetector();
-                            detector.setText(FileUtils.readFileToByteArray(sourceFile));
-                            CharsetMatch[] matches = detector.detectAll();
-                            if (matches.length > 0) {
-                                for (CharsetMatch match : matches) {
-                                    try {
-                                        syncOne(destFile, sourceFile, match.getName());
-                                        break;
-                                    } catch (UnsupportedCharsetException e) {
-                                        System.err.println(match.getName() + " failed for " + sourceFilePath + ": " + e.getMessage());
-                                    }
-                                }
-                            } else {
-                                System.err.println("Could not detect encoding of source file " + sourceFilePath);
-                            }
-                        } catch (IOException e) {
-                            System.err.println("Could not check or copy source file " + sourceFilePath);
-                            e.printStackTrace();
-                        } catch (Exception e) {
-                            System.err.println("Failed to sync " + sourceFilePath);
-                            throw e;
+                        if (isBinaryFile(sourceFile)) {
+                            syncBinaryContent(destFile, sourceFile);
+                        } else {
+                            syncTextContent(destFile, sourceFilePath, sourceFile);
                         }
+
                     }
                 });
         if (doNewFileCheck) {
@@ -103,8 +85,44 @@ public class SourceSyncTool {
         }
     }
 
-    private static boolean isIngoredByType(File file) {
-        return IGNORED_FILE_TYPES.stream().anyMatch(s -> file.getName().endsWith(s));
+    private static void syncBinaryContent(File destFile, File sourceFile) {
+        try {
+            FileUtils.copyFile(sourceFile, destFile);
+            System.out.println("Updated " + destFile.getAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("Could not check or copy source file " + sourceFile.getAbsolutePath());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncTextContent(File destFile, String sourceFilePath, File sourceFile) {
+        try {
+            CharsetDetector detector = new CharsetDetector();
+            detector.setText(FileUtils.readFileToByteArray(sourceFile));
+            CharsetMatch[] matches = detector.detectAll();
+            if (matches.length > 0) {
+                for (CharsetMatch match : matches) {
+                    try {
+                        syncOne(destFile, sourceFile, match.getName());
+                        break;
+                    } catch (UnsupportedCharsetException e) {
+                        System.err.println(match.getName() + " failed for " + sourceFilePath + ": " + e.getMessage());
+                    }
+                }
+            } else {
+                System.err.println("Could not detect encoding of source file " + sourceFilePath);
+            }
+        } catch (IOException e) {
+            System.err.println("Could not check or copy source file " + sourceFilePath);
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("Failed to sync " + sourceFilePath);
+            throw e;
+        }
+    }
+
+    private static boolean isBinaryFile(File file) {
+        return BINARY_FILE_TYPES.stream().anyMatch(s -> file.getName().endsWith(s));
     }
 
     private static void syncOne(File destFile, File sourceFile, String sourceCharset) throws IOException {
