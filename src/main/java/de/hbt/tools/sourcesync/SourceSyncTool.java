@@ -17,7 +17,7 @@ import java.util.Set;
 public class SourceSyncTool {
 
     private static final Set<String> IGNORE_FILES = new HashSet<>();
-    private static final Collection<String> BINARY_FILE_TYPES = Arrays.asList(".jpg", ".png", ".gif", ".jpeg", ".pdf", ".svg", ".gz", ".zip", ".ser", ".jar");
+    private static final Collection<String> BINARY_FILE_TYPES = Arrays.asList(".jpg", ".png", ".gif", ".jpeg", ".pdf", ".svg", ".gz", ".zip", ".ser", ".jar", ".obj");
 
     static {
         IGNORE_FILES.add(".DS_Store");
