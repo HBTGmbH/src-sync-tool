@@ -18,6 +18,7 @@ public class SourceSyncTool {
 
     private static final Set<String> IGNORE_FILES = new HashSet<>();
     private static final Collection<String> BINARY_FILE_TYPES = Arrays.asList(".jpg", ".png", ".gif", ".jpeg", ".pdf", ".svg", ".gz", ".zip", ".ser", ".jar", ".obj");
+    private static final Collection<String> XML_FILE_TYPES = Arrays.asList(".xml", ".xhtml");
 
     static {
         IGNORE_FILES.add(".DS_Store");
@@ -70,10 +71,10 @@ public class SourceSyncTool {
                     if (!sourceFile.exists()) {
                         System.err.println(sourceFilePath + " no longer exists. Cannot update dest file! Check the reason manually.");
                     } else {
-                        if (isBinaryFile(sourceFile)) {
-                            syncBinaryContent(destFile, sourceFile);
+                        if (isBinaryFile(sourceFile) || isXMLFile(sourceFile)) {
+                            copyContent(destFile, sourceFile);
                         } else {
-                            syncTextContent(destFile, sourceFilePath, sourceFile);
+                            transcodeAndCopyContent(destFile, sourceFilePath, sourceFile);
                         }
 
                     }
@@ -85,7 +86,7 @@ public class SourceSyncTool {
         }
     }
 
-    private static void syncBinaryContent(File destFile, File sourceFile) {
+    private static void copyContent(File destFile, File sourceFile) {
         try {
             FileUtils.copyFile(sourceFile, destFile);
             System.out.println("Updated " + destFile.getAbsolutePath());
@@ -95,7 +96,7 @@ public class SourceSyncTool {
         }
     }
 
-    private static void syncTextContent(File destFile, String sourceFilePath, File sourceFile) {
+    private static void transcodeAndCopyContent(File destFile, String sourceFilePath, File sourceFile) {
         try {
             CharsetDetector detector = new CharsetDetector();
             detector.setText(FileUtils.readFileToByteArray(sourceFile));
@@ -123,6 +124,10 @@ public class SourceSyncTool {
 
     private static boolean isBinaryFile(File file) {
         return BINARY_FILE_TYPES.stream().anyMatch(s -> file.getName().endsWith(s));
+    }
+
+    private static boolean isXMLFile(File file) {
+        return XML_FILE_TYPES.stream().anyMatch(s -> file.getName().endsWith(s));
     }
 
     private static void syncOne(File destFile, File sourceFile, String sourceCharset) throws IOException {
