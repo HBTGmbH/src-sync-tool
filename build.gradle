@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'de.hbt.tools'
-version '1.4'
+version '1.5'
 
 sourceCompatibility = 1.8
 
